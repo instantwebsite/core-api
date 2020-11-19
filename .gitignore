@@ -13,3 +13,7 @@ pom.xml.asc
 .hg/
 .eastwood
 .env
+e2e/actual/*
+e2e/expected/*.trimmed.png
+e2e/expected/*.trimmed.cropped.png
+e2e/screenshots/*

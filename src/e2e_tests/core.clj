@@ -1,23 +1,37 @@
 (ns e2e-tests.core
   (:require 
-    [me.raynes.conch.low-level :as sh]
     [clojure.pprint :refer [pprint]]
     [clojure.java.io :as io]
     [clojure.string :as string]
     [clojure.tools.logging :as log]
+    ;;
     [etaoin.api :as etaoin]
     [clj-http.client :as http]
-    [instant-website.db :as db]
-    [instant-website.core :as core]
     [hiccup.core :as hiccup]
     [org.httpkit.server :as httpkit]
-    [cheshire.core :refer [parse-string generate-string]])
+    [cheshire.core :refer [parse-string generate-string]]
+    [me.raynes.conch.low-level :as sh]
+    ;; 
+    [instant-website.db :as db]
+    [instant-website.core :as core])
   (:import [java.io File]
            [java.util Base64]))
+
 
 ;; A lot of of the code in this file is from this source:
 ;; https://github.com/oliyh/kamera/blob/master/src/clj/kamera/core.clj
 ;; Distributed under Eclipse Public License
+
+(defonce test-results (atom {}))
+(defonce server-instance (atom nil))
+(defonce user (atom nil))
+(defonce browser (atom nil))
+
+;; Each item in this list corresponds to a file in `e2e/json-payloads/:name.json`
+(def active-tests ["font-sizes"
+                   "full-website"
+                   "mixed-font-size"
+                   "auto-layout"])
 
 (defn magick [operation
               operation-args
@@ -234,11 +248,144 @@
     (etaoin/wait browser 1)
     (etaoin/screenshot browser expected-p)))
 
-(defonce test-results (atom {}))
-(defonce server-instance (atom nil))
+(defn create-user []
+  (let [login-code (db/->login-code "test@example.com")
+        token (db/->tokens)
+        new-user (db/->user token login-code)]
+    (doseq [t [token new-user]]
+      (db/put! @core/crux-node t))
+    (reset! user {:user new-user
+                  :token token})))
 
 (comment
-  (create-expected plugin-token "auto-layout" browser)
+  (db/->login-code "test@example.com")
+  (identity @core/crux-node)
+  (create-user))
+
+(defn plugin-token []
+  (-> @user :token :tokens/plugin))
+
+(defn api-token []
+  (-> @user :token :tokens/plugin))
+
+(defn create-browser []
+  (reset! browser (etaoin/chrome {:headless true
+                                  :size [1920 1080]})))
+
+(defn run-test-file [n]
+  (swap! test-results
+         assoc
+         n
+         (test-render-of-payload (plugin-token) n @browser)))
+
+(defn run-all-tests []
+  (doseq [test-name active-tests]
+    (run-test-file test-name))
+  (println "All tests executed!")
+  true)
+
+(comment
+  (run-all-tests))
+
+(defn image-view [k n]
+  [:div
+    [:h3 n]
+    [:label
+     {:for (str k "-" n)}
+     "Show"]
+    [:input
+     {:id (str k "-" n)
+      :class "toggle"
+      :type "checkbox"}]
+    [:img
+     {:src (str n "/" k)}]])
+
+(defn render-results []
+  [:div
+   (map (fn [[k v]]
+          [:div
+            {:style {:border-top "5px solid grey"}}
+            [:h1 k]
+            [:form
+              {:action (str "/run-tests/" k)
+               :method "post"}
+              [:button
+               (str "Run " k " tests")]]
+            [:h2 (str "Difference score: " (:metric v))]
+            [:div
+             [:a
+              {:href (:website-url v)
+               :target "_blank"}
+              (:website-url v)]]
+            (image-view k "difference")
+            [:form
+              {:action (str "/accept-diff/" k)
+               :method "post"}
+              [:button
+               "Confirm difference"]]
+            (image-view k "actual")
+            (image-view k "expected")])
+        @test-results)])
+
+(def style "
+img {
+  display: none;
+}
+.toggle:checked ~ img {
+             display: block;
+}
+")
+
+(defn app [req]
+  (try
+    (let [uri (:uri req)
+          splitted (string/split uri #"/")]
+        (if (> (count splitted) 0)
+          (let [part (nth splitted 1)
+                testname (nth splitted 2)]
+            (condp = part
+              "expected" {:body (io/file (str "e2e/expected/" testname ".png"))}
+              "actual" {:body (io/file (str "e2e/actual/" testname ".png"))}
+              "difference" {:body (io/file (str "e2e/screenshots/" testname ".difference.png"))}
+              "accept-diff" (do
+                              (io/copy (io/file (str "e2e/actual/" testname ".png"))
+                                       (io/file (str "e2e/expected/" testname ".png")))
+                              {:headers {"Location" "/"}
+                               :status 307
+                               :body "ok"})
+              "run-tests" (do
+                            (swap! test-results
+                                   assoc
+                                   testname
+                                   (test-render-of-payload (plugin-token) testname @browser))
+                            {:headers {"Location" "/"}
+                             :status 307
+                             :body "ok"})))
+          {:status 200
+           :body
+            (hiccup/html [:html
+                          [:head
+                            [:title "Test results"]
+                            [:style style]]
+                          [:body
+                           (render-results)]])}))
+    (catch Exception err
+      {:body (str err)})))
+
+(defn start-server []
+  (when (nil? @core/crux-node)
+    (throw (Exception. "@core/crux-node nil, make sure you run core-api server before starting E2E server")))
+  (create-user)
+  (create-browser)
+  (println "Starting E2E test server, listening on localhost:8378")
+  (reset! server-instance (httpkit/run-server
+                            #'app
+                            {:port 8378})))
+
+(comment
+  (create-user)
+  (start-server)
+  (create-expected (plugin-token) "auto-layout" @browser)
   ;; (create-expected plugin-token "basic" browser)
   ;; (create-expected plugin-token "four-corners" browser)
   (create-expected plugin-token "flexible-corners" browser)
@@ -249,16 +396,11 @@
          (test-render-of-payload plugin-token "alignment" browser))
   ;; Create new user
   (require '[dev])
-  (def user (dev/new-user))
-  (def plugin-token (-> user :token :tokens/plugin))
-  (def api-token (-> user :token :tokens/plugin))
 
   ;; (def plugin-token "f023261dc42dda92dec73c5a6dc6332d1")
   ;; (def test-files ["full-website"])
   ;; (def test-file (first test-files))
 
-  (def browser (etaoin/chrome {:headless true
-                               :size [1920 1080]}))
   (etaoin/quit browser)
   ;; (test-render-of-payload plugin-token test-file browser)
   ;; :metric should be 0
@@ -268,98 +410,15 @@
   ;;          '[[?token :token/plugin ?plugin-token]]
   ;;          :one)
 
-  (defn image-view [k n]
-    [:div
-      [:h3 n]
-      [:label
-       {:for (str k "-" n)}
-       "Show"]
-      [:input
-       {:id (str k "-" n)
-        :class "toggle"
-        :type "checkbox"}]
-      [:img
-       {:src (str n "/" k)}]])
 
-  (defn render-results []
-    [:div
-     (map (fn [[k v]]
-            [:div
-              {:style {:border-top "5px solid grey"}}
-              [:h1 k]
-              [:form
-                {:action (str "/run-tests/" k)
-                 :method "post"}
-                [:button
-                 (str "Run " k " tests")]]
-              [:h2 (str "Difference score: " (:metric v))]
-              [:div
-               [:a
-                {:href (:website-url v)
-                 :target "_blank"}
-                (:website-url v)]]
-              (image-view k "difference")
-              [:form
-                {:action (str "/accept-diff/" k)
-                 :method "post"}
-                [:button
-                 "Confirm difference"]]
-              (image-view k "actual")
-              (image-view k "expected")])
-          @test-results)])
-
-  (def style "
-img {
-  display: none;
-}
-.toggle:checked ~ img {
-             display: block;
-}
-  ")
-
-  (def app (fn [req]
-             (try
-               (let [uri (:uri req)
-                     splitted (string/split uri #"/")]
-                   (if (> (count splitted) 0)
-                     (let [part (nth splitted 1)
-                           testname (nth splitted 2)]
-                       (condp = part
-                         "expected" {:body (io/file (str "e2e/expected/" testname ".png"))}
-                         "actual" {:body (io/file (str "e2e/actual/" testname ".png"))}
-                         "difference" {:body (io/file (str "e2e/screenshots/" testname ".difference.png"))}
-                         "accept-diff" (do
-                                         (io/copy (io/file (str "e2e/actual/" testname ".png"))
-                                                  (io/file (str "e2e/expected/" testname ".png")))
-                                         {:headers {"Location" "/"}
-                                          :status 307
-                                          :body "ok"})
-                         "run-tests" (do
-                                       (swap! test-results
-                                              assoc
-                                              testname
-                                              (test-render-of-payload plugin-token testname browser))
-                                       {:headers {"Location" "/"}
-                                        :status 307
-                                        :body "ok"})))
-                     {:status 200
-                      :body
-                       (hiccup/html [:html
-                                     [:head
-                                       [:title "Test results"]
-                                       [:style style]]
-                                     [:body
-                                      (render-results)]])}))
-               (catch Exception err
-                 {:body (str err)}))))
-
-  (reset! server-instance (httpkit/run-server
-                            #'app
-                            {:port 8378}))
 
   #_(create-expected plugin-token "auto-layout" browser)
   (swap! test-results
          assoc
          "auto-layout"
-         (test-render-of-payload plugin-token "auto-layout" browser)))
+         (test-render-of-payload (plugin-token) "auto-layout" @browser))
+  (swap! test-results
+         assoc
+         "font-sizes"
+         (test-render-of-payload (plugin-token) "font-sizes" @browser)))
   ;; :metric should be 0

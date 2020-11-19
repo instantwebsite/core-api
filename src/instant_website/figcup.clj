@@ -594,7 +594,7 @@
              (-> element :fontName :style))
   (let [name (clean-component-name (:name element))
         attrs (figma-styles->css {:opacity         opacity
-                                  :width width
+                                  :width (+ width 2)
                                   :height height
                                   :rotation rotation
                                   :x x
