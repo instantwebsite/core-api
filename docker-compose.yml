@@ -1,0 +1,32 @@
+version: "3.8"
+services:
+  backend:
+    image: clojure:openjdk-11-lein-slim-buster
+    ports:
+      - "8080:8080"
+      - "47326:47326"
+    volumes:
+      - .:/usr/src/app
+      - websites:/user-websites
+      - rocksdb:/iw-db
+      - m2deps:/root/.m2
+    environment:
+      - IW_DB_PATH=/iw-db
+      - IW_WEBSITES_STORAGE_PATH=/user-websites
+    env_file:
+     - ./.env
+    links:
+      - caddy
+    working_dir: /usr/src/app
+    command: lein run
+  caddy:
+    image: caddy:2.1.1-alpine
+    ports:
+      - "8888:8888"
+    command: caddy file-server --listen :8888 --root /user-websites
+    volumes:
+      - websites:/user-websites
+volumes:
+  websites: {}
+  rocksdb: {}
+  m2deps: {}
