@@ -401,6 +401,12 @@ img {
                             #'app
                             {:port 8378})))
 
+(defn -main [& args]
+  (instant-website.core/-main)
+  (start-server)
+  (run-all-tests)
+  (println "Listening on localhost:8378"))
+
 (comment
   (create-user)
   (instant-website.core/-main)

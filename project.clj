@@ -55,4 +55,5 @@
   :profiles {:uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
              :e2e {:injections
-                   [(.. System (setProperty "RUN_E2E" "true"))]}})
+                   [(.. System (setProperty "RUN_E2E" "true"))]
+                   :main ^:skip-aot e2e-tests.core}})
