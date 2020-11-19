@@ -12,6 +12,7 @@ jobs:
       JVM_OPTS: -Xmx3200m
     steps:
       - checkout
+      - run: apt update && apt install --yes chromium-driver imagemagick
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "project.clj" }}
@@ -21,9 +22,12 @@ jobs:
           paths:
             - ~/.m2
           key: v1-dependencies-{{ checksum "project.clj" }}
-      - run: lein cloverage --junit --html
+      - run: lein with-profile e2e cloverage --junit --html
       - store_test_results:
           path: target/coverage
       - store_artifacts:
           path: target/coverage
-
+      - store_artifacts:
+          path: e2e/
+      - store_artifacts:
+          path: /tmp/instantwebsites

@@ -272,6 +272,7 @@
 
 (defn create-browser []
   (reset! browser (etaoin/chrome {:headless true
+                                  :args ["--no-sandbox"]
                                   :size [1920 1080]})))
 
 (defn run-test-file [n]
