@@ -594,6 +594,9 @@
              (-> element :fontName :style))
   (let [name (clean-component-name (:name element))
         attrs (figma-styles->css {:opacity         opacity
+                                  ;; Adding 2px to the width as the google webfonts
+                                  ;; used in Figma are seemingly different than
+                                  ;; the ones returned from webfonts API.
                                   :width (+ width 2)
                                   :height height
                                   :rotation rotation

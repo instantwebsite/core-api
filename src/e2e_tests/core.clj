@@ -8,6 +8,8 @@
     [etaoin.api :as etaoin]
     [clj-http.client :as http]
     [hiccup.core :as hiccup]
+    [ring.middleware.file :refer [wrap-file]]
+    [ring.util.response :refer [redirect]]
     [org.httpkit.server :as httpkit]
     [cheshire.core :refer [parse-string generate-string]]
     [me.raynes.conch.low-level :as sh]
@@ -223,7 +225,7 @@
 (defn test-render-of-payload [token file browser]
   (let [website-id (create-website token file)
         website    (update-website token file website-id)
-        url        (str "http://localhost:8888/" website-id)
+        url        (str "http://localhost:8888/" website-id "/")
         actual-p   (format "e2e/actual/%s.png" file)
         expected-p (format "e2e/expected/%s.png" file)]
     (etaoin/go browser url)
@@ -273,10 +275,9 @@
                                   :size [1920 1080]})))
 
 (defn run-test-file [n]
-  (swap! test-results
-         assoc
-         n
-         (test-render-of-payload (plugin-token) n @browser)))
+  (let [results (test-render-of-payload (plugin-token) n @browser)]
+    (swap! test-results assoc n results)
+    results))
 
 (defn run-all-tests []
   (doseq [test-name active-tests]
@@ -372,9 +373,25 @@ img {
     (catch Exception err
       {:body (str err)})))
 
+(defonce websites-server (atom nil))
+
+(defn start-websites-server []
+  (when (not (nil? @websites-server))
+    (@websites-server)
+    (reset! websites-server nil))
+  (reset! websites-server
+          (httpkit/run-server
+            (-> (fn [req] {:status 404})
+                (wrap-file "/tmp/instantwebsites"))
+            {:port 8888})))
+
+(comment
+  (start-websites-server))
+
 (defn start-server []
   (when (nil? @core/crux-node)
     (throw (Exception. "@core/crux-node nil, make sure you run core-api server before starting E2E server")))
+  (start-websites-server)
   (create-user)
   (create-browser)
   (println "Starting E2E test server, listening on localhost:8378")
@@ -384,7 +401,10 @@ img {
 
 (comment
   (create-user)
+  (instant-website.core/-main)
   (start-server)
+  (run-all-tests)
+  (start-websites-server)
   (create-expected (plugin-token) "auto-layout" @browser)
   ;; (create-expected plugin-token "basic" browser)
   ;; (create-expected plugin-token "four-corners" browser)

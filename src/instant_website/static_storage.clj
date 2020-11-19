@@ -21,6 +21,8 @@
 (def fonts-gstatic-regex #"(https\:\/\/fonts\.gstatic\.com.*\.woff2)")
 
 (defn http-get [url as]
+  (println "[static-storage http-get]")
+  (println url)
   (:body (http/get url
                    ;; webfonts API gives different formats depending on user-agent
                    ;; so here we specify Chrome so we get woff2 instead of ttf
@@ -77,7 +79,7 @@
     [:meta {:http-equiv "refresh"
             :content (str "0; URL='"
                           to
-                          "'")}]
+                          "/'")}]
     [:title "InstantWebsite.app"]]
    [:body
     "Redirecting..."]])
