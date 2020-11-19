@@ -12,7 +12,9 @@ jobs:
       JVM_OPTS: -Xmx3200m
     steps:
       - checkout
-      - run: apt update && apt install --yes chromium-driver imagemagick
+      - run: sed -i '$ a\\ndeb https://deb.debian.org/debian buster contrib\ndeb-src https://deb.debian.org/debian buster contrib' /etc/apt/sources.list
+      - run: apt update && apt install --yes chromium-driver imagemagick ttf-mscorefonts-installer
+      - run: fc-cache
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "project.clj" }}
