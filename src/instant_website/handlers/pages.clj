@@ -22,7 +22,7 @@
             :padding "10px"
             :font-size  "11px"
             :border-top-right-radius "2px"
-            :font-family  "sans-serif"
+            :font-family  "Arial,sans-serif"
             :letter-spacing  "1px"}}
    "Created with "
    [:a
