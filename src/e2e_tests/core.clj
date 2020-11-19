@@ -380,6 +380,7 @@ img {
   (when (not (nil? @websites-server))
     (@websites-server)
     (reset! websites-server nil))
+  (.mkdir (java.io.File. "/tmp/instantwebsites"))
   (reset! websites-server
           (httpkit/run-server
             (-> (fn [req] {:status 404})
