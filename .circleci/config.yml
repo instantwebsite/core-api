@@ -12,7 +12,7 @@ jobs:
       JVM_OPTS: -Xmx3200m
     steps:
       - checkout
-      - run: apt update && apt install --yes imagemagick wget unzip
+      - run: apt update && apt install --yes imagemagick wget unzip libnss3-dev libatk-bridge2.0-0 libgbm-dev libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgtk3.0 libasound2
       - run: (cd chromedist && ./download.sh)
       - restore_cache:
           keys:
