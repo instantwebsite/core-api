@@ -274,6 +274,8 @@
 
 (defn create-browser []
   (reset! browser (etaoin/chrome {:headless true
+                                  :path-driver "chromedist/chromedriver_linux64/chromedriver"
+                                  :path-browser "chromedist/chrome-linux/chrome"
                                   :args ["--no-sandbox"]
                                   :size [1920 1080]})))
 
