@@ -17,5 +17,7 @@
       (doseq [test-name e2e/active-tests]
         (let [scenario-name (str "E2E Test - " test-name)]
           (testing scenario-name
-            ;; Checking that the difference is 0
-            (is (= 0 (:metric (e2e/run-test-file test-name))))))))))
+            (let [results (e2e/run-test-file test-name)]
+              (pprint results)
+              ;; Checking that the difference is 0%
+              (is (= 0 (:metric results))))))))))

@@ -253,13 +253,15 @@
 (defn create-user []
   (let [login-code (db/->login-code "test@example.com")
         token (db/->tokens)
-        new-user (db/->user token login-code)]
-    (doseq [t [token new-user]]
+        new-user (db/->user token login-code)
+        pro-user (assoc new-user :user/plan :pro)]
+    (doseq [t [token pro-user]]
       (db/put! @core/crux-node t))
-    (reset! user {:user new-user
+    (reset! user {:user pro-user
                   :token token})))
 
 (comment
+  (create-user)
   (db/->login-code "test@example.com")
   (identity @core/crux-node)
   (create-user))
@@ -272,6 +274,9 @@
 
 (defn create-browser []
   (reset! browser (etaoin/chrome {:headless true
+                                  :path-driver "chromedist/chromedriver_linux64/chromedriver"
+                                  :path-browser "chromedist/chrome-linux/chrome"
+                                  :args ["--no-sandbox"]
                                   :size [1920 1080]})))
 
 (defn run-test-file [n]
@@ -306,7 +311,9 @@
    (map (fn [[k v]]
           [:div
             {:style {:border-top "5px solid grey"}}
-            [:h1 k]
+            [:h1
+             {:id k}
+             k]
             [:form
               {:action (str "/run-tests/" k)
                :method "post"}
@@ -351,15 +358,13 @@ img {
               "accept-diff" (do
                               (io/copy (io/file (str "e2e/actual/" testname ".png"))
                                        (io/file (str "e2e/expected/" testname ".png")))
-                              {:headers {"Location" "/"}
+                              (run-test-file testname)
+                              {:headers {"Location" (str "/#" testname)}
                                :status 307
                                :body "ok"})
               "run-tests" (do
-                            (swap! test-results
-                                   assoc
-                                   testname
-                                   (test-render-of-payload (plugin-token) testname @browser))
-                            {:headers {"Location" "/"}
+                            (run-test-file testname)
+                            {:headers {"Location" (str "/#" testname)}
                              :status 307
                              :body "ok"})))
           {:status 200
@@ -379,6 +384,7 @@ img {
   (when (not (nil? @websites-server))
     (@websites-server)
     (reset! websites-server nil))
+  (.mkdir (java.io.File. "/tmp/instantwebsites"))
   (reset! websites-server
           (httpkit/run-server
             (-> (fn [req] {:status 404})
@@ -398,6 +404,12 @@ img {
   (reset! server-instance (httpkit/run-server
                             #'app
                             {:port 8378})))
+
+(defn -main [& args]
+  (instant-website.core/-main)
+  (start-server)
+  (run-all-tests)
+  (println "Listening on localhost:8378"))
 
 (comment
   (create-user)

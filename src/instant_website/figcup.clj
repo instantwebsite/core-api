@@ -173,8 +173,8 @@
   {:border-radius (to-px radius)})
 
 (defmethod -figma-styles->css :width [[_ width]]
-  (log :info ":width")
-  (log :info width)
+  (llog :info ":width")
+  (llog :info width)
   (let [percentage? (clojure.string/includes? width "%")]
     {:width (if percentage?
               width
@@ -267,8 +267,8 @@
   ;; (println layoutMode)
   ;; (println left)
   ;; (println horizontalPadding)
-  (log :info "[layoutMode]")
-  (log :info layoutMode)
+  (llog :info "[layoutMode]")
+  (llog :info layoutMode)
   (let [flex-direction (get layoutModes layoutMode)
         container {:display "flex"}]
     (if (nil? flex-direction)
@@ -281,8 +281,8 @@
        :justify-content "space-between"})))
 
 (defmethod -figma-styles->css :layoutAlign [[_ alignment]]
-  (log :info "[layoutAlign]")
-  (log :info alignment)
+  (llog :info "[layoutAlign]")
+  (llog :info alignment)
   (if (= alignment "STRETCH")
     {:width "100%"}
     {}))
