@@ -311,7 +311,9 @@
    (map (fn [[k v]]
           [:div
             {:style {:border-top "5px solid grey"}}
-            [:h1 k]
+            [:h1
+             {:id k}
+             k]
             [:form
               {:action (str "/run-tests/" k)
                :method "post"}
@@ -356,15 +358,13 @@ img {
               "accept-diff" (do
                               (io/copy (io/file (str "e2e/actual/" testname ".png"))
                                        (io/file (str "e2e/expected/" testname ".png")))
-                              {:headers {"Location" "/"}
+                              (run-test-file testname)
+                              {:headers {"Location" (str "/#" testname)}
                                :status 307
                                :body "ok"})
               "run-tests" (do
-                            (swap! test-results
-                                   assoc
-                                   testname
-                                   (test-render-of-payload (plugin-token) testname @browser))
-                            {:headers {"Location" "/"}
+                            (run-test-file testname)
+                            {:headers {"Location" (str "/#" testname)}
                              :status 307
                              :body "ok"})))
           {:status 200
