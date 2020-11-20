@@ -253,13 +253,15 @@
 (defn create-user []
   (let [login-code (db/->login-code "test@example.com")
         token (db/->tokens)
-        new-user (db/->user token login-code)]
-    (doseq [t [token new-user]]
+        new-user (db/->user token login-code)
+        pro-user (assoc new-user :user/plan :pro)]
+    (doseq [t [token pro-user]]
       (db/put! @core/crux-node t))
-    (reset! user {:user new-user
+    (reset! user {:user pro-user
                   :token token})))
 
 (comment
+  (create-user)
   (db/->login-code "test@example.com")
   (identity @core/crux-node)
   (create-user))
