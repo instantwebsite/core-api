@@ -13,6 +13,10 @@ The E2E testing suite is based on the "Golden Master Testing" methodology, where
 ###### Run as part of all tests
 
 ```
+# Download specific version of chromium to be used in E2E tests
+cd chromedist && ./download.sh
+
+# Run the E2E tests
 lein with-profile e2e test
 ```
 
@@ -41,6 +45,7 @@ Main functions for development within a REPL:
 (instant-website.core/-main)
 
 ;; Start the E2E HTTP server
+(require 'e2e-tests.core)
 (e2e-tests.core/start-server)
 
 ;; Runs all active E2E tests
