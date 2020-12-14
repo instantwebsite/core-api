@@ -49,7 +49,8 @@
                  [clj-commons/iapetos "0.1.11"]
                  [io.prometheus/simpleclient_hotspot "0.9.0"]
                  [cawdy "0.3.1"]
-                 [rocks.clj/z "0.1.0"]]
+                 [rocks.clj/z "0.1.0"]
+                 [lynxeyes/dotenv "1.1.0"]]
   :main ^:skip-aot instant-website.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all

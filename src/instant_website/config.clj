@@ -1,7 +1,9 @@
-(ns instant-website.config)
+(ns instant-website.config
+  (:require [dotenv :as dotenv]))
 
 (defn env-or-default [k default-value]
   (or (System/getenv k)
+      (dotenv/env k)
       default-value))
 
 ;; Tuple is: [env var, default value]
@@ -87,4 +89,5 @@
   (identity config)
   (identity env-key)
   (:frontend-host config)
-  (:db-path config))
+  (:db-path config)
+  (:smtp-host config))
